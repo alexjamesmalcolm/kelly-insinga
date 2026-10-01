@@ -1,0 +1,96 @@
+name: Cloudflare Workers
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main, agent/photography-portfolio]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+
+  preview:
+    name: Deploy Cloudflare PR preview
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.action != 'closed' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'push' &&
+       github.ref_name == 'agent/photography-portfolio')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+      - name: Deploy Cloudflare preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
+        run: npx --yes wrangler@4.135.0 preview --name kelly-insinga-pr-1
+
+  production:
+    name: Deploy Cloudflare production
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+      - name: Deploy Cloudflare production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
+        run: npx --yes wrangler@4.135.0 deploy
+
+  cleanup-preview:
+    name: Remove Cloudflare PR preview
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Remove Cloudflare preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
+        run: npx --yes wrangler@4.135.0 preview delete --name kelly-insinga-pr-1 --skip-confirmation
