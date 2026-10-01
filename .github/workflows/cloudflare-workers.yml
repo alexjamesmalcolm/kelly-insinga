@@ -5,7 +5,7 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
   push:
-    branches: [main]
+    branches: [main, agent/photography-portfolio]
 
 permissions:
   contents: read
@@ -28,7 +28,11 @@ jobs:
 
   preview:
     name: Deploy Cloudflare PR preview
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'push' &&
+       github.ref_name == 'agent/photography-portfolio')
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -46,11 +50,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
-        run: npx wrangler preview --name "kelly-insinga-pr-${{ github.event.pull_request.number }}"
+        run: npx wrangler preview --name kelly-insinga-pr-1
 
   production:
     name: Deploy Cloudflare production
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref_name == 'main'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
