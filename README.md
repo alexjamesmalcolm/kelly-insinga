@@ -97,21 +97,28 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
 
-## Cloudflare Workers Builds
+## Cloudflare Workers
 
-Deploy this application with Cloudflare Workers Builds rather than the former
-Cloudflare Pages project. Connect the repository to a Worker named
-`kelly-insinga` and set the build command to `npm run build`; the deploy command
-can use the default `npx wrangler deploy`. Workers Builds installs the locked
-dependencies from `package-lock.json`. The `.nvmrc` file selects Node.js 22,
-which meets the project and dependency engine requirements.
+GitHub Actions handles validation and Cloudflare deployments through
+`.github/workflows/cloudflare-workers.yml`. Pull requests run the locked
+dependency install, production build, and rendered HTML test. Same-repository
+pull requests also deploy an isolated Cloudflare Worker Preview. A push to
+`main` deploys the production Worker.
 
-`wrangler.jsonc` points Wrangler at the built Worker in `dist/server/index.js`,
-serves `dist/client` through the `ASSETS` binding, and declares the `IMAGES`
-binding used by the Worker image-optimization endpoint. Enable preview builds
-in the Cloudflare Worker settings to get branch previews.
+Set the repository Actions secret `CLOUDFLARE_API_TOKEN` to a Cloudflare API
+token with the required Workers Scripts edit permission. The account ID is set
+in the workflow.
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+`wrangler.jsonc` points Wrangler at the built Worker in
+`dist/server/index.js`, serves `dist/client` through the `ASSETS` binding,
+and declares the `IMAGES` binding used by the Worker image-optimization
+endpoint. The `previews.images` entry gives PR previews the same Images API
+binding so responsive image transformations work there too.
+
+The timeout defaults can be overridden for a controlled canary with
+`SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`,
+and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never
+retry an unchanged install or build.
 
 ## Learn More
 
