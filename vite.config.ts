@@ -1,3 +1,4 @@
+Sourcing ~/.zshenv
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -14,6 +15,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  images: { binding: "IMAGES" },
   d1_databases: d1
     ? [
         {
