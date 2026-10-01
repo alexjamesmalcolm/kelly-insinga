@@ -1,3 +1,4 @@
+Sourcing ~/.zshenv
 # vinext-starter
 
 A clean full-stack starter running on
@@ -9,22 +10,19 @@ Drizzle support.
 - Node.js `>=22.13.0`
 - Linux with `flock`, `curl`, and GNU `timeout`
 
-## Sites Lifecycle
+## Build and Deployment
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
-
-This starter does not use `wrangler.jsonc`.
-
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
-
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
+Cloudflare Workers Builds installs the locked dependencies from
+`package-lock.json` and runs `npm run build`. The build scripts use a
+project-local runtime directory and GNU `timeout`; they target Linux, including
+the Ubuntu build environment used by Workers Builds.
 
 ## Included Shape
 
 - edit site code under `app/`
 - `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
+- `wrangler.jsonc` configures the built Worker, static assets, and Images binding
+- `vite.config.ts` configures the Cloudflare Vite plugin for local development
 - `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
 - `db/schema.ts` starts intentionally empty
 - `examples/d1/` contains an optional D1 example surface
@@ -92,13 +90,27 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - `npm run install:ci`: perform the one bounded lockfile install
 - `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
+- `npm run build`: build and validate the deployable Worker artifact
 - `npm run start`: start the built Vinext application
 - `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
+- `npm run validate:artifact`: recheck the Worker artifact and ESM `default.fetch` export
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
 Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+
+## Cloudflare Workers Builds
+
+Deploy this application with Cloudflare Workers Builds rather than the former
+Cloudflare Pages project. Connect the repository to a Worker named
+`kelly-insinga` and set the build command to `npm run build`; the deploy command
+can use the default `npx wrangler deploy`. Workers Builds installs the locked
+dependencies from `package-lock.json`. The `.nvmrc` file selects Node.js 22,
+which meets the project and dependency engine requirements.
+
+`wrangler.jsonc` points Wrangler at the built Worker in `dist/server/index.js`,
+serves `dist/client` through the `ASSETS` binding, and declares the `IMAGES`
+binding used by the Worker image-optimization endpoint. Enable preview builds
+in the Cloudflare Worker settings to get branch previews.
 
 The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
 
