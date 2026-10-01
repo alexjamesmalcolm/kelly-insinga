@@ -12,5 +12,10 @@
   "images": {
     "binding": "IMAGES"
   },
-  "preview_urls": true
+  "preview_urls": true,
+  "previews": {
+    "images": {
+      "binding": "IMAGES"
+    }
+  }
 }
