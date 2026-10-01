@@ -1,0 +1,71 @@
+name: Cloudflare Workers
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+
+  preview:
+    name: Deploy Cloudflare PR preview
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+      - name: Deploy Cloudflare preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
+        run: npx wrangler preview --name "kelly-insinga-pr-${{ github.event.pull_request.number }}"
+
+  production:
+    name: Deploy Cloudflare production
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Build and test rendered HTML
+        run: npm test
+      - name: Deploy Cloudflare production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 9e7f46d46da59b7bac7352937aae5deb
+        run: npx wrangler deploy
